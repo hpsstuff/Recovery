@@ -43,7 +43,7 @@ jobs:
       - name: Sync SHRP sources
         run: |
           cd shrp
-          repo sync -c --force-sync --no-clone-bundle --no-tags --prune --optimized-fetch --force-broken --depth=1 -j$(nproc --all)
+          repo sync -c --force-sync --no-clone-bundle --no-tags --prune --optimized-fetch --force-broken -j$(nproc --all)
 
       # 📦 Clone your device, kernel, and vendor trees
       - name: Clone device, kernel, and vendor trees
