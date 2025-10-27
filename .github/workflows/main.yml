@@ -11,6 +11,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # 🧹 Free up space before build
+      - name: Free up disk space
+        run: |
+          echo "Before cleanup:"
+          df -h
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /usr/local/share/boost /opt/hostedtoolcache
+          sudo apt-get clean
+          echo "After cleanup:"
+          df -h
+
+      # 🧰 Install required build packages
       - name: Set up build environment
         run: |
           sudo apt-get update
@@ -18,21 +29,23 @@ jobs:
             gcc-multilib g++-multilib libc6-dev-i386 lib32ncurses5-dev x11proto-core-dev \
             libx11-dev lib32z1-dev libgl1-mesa-dev libxml2-utils xsltproc unzip fontconfig \
             openjdk-11-jdk python-is-python3 repo ccache
-
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
 
+      # 🧭 Initialize SHRP manifest
       - name: Initialize SHRP manifest
         run: |
           mkdir shrp
           cd shrp
           repo init -u https://github.com/SHRP-Reborn/manifest.git -b shrp-12.1
 
+      # 🔄 Sync SHRP sources (shallow clone)
       - name: Sync SHRP sources
         run: |
           cd shrp
-          repo sync -c -j$(nproc --all) --force-sync --no-clone-bundle --no-tags
+          repo sync -c --force-sync --no-clone-bundle --no-tags --prune --optimized-fetch --force-broken --depth=1 -j$(nproc --all)
 
+      # 📦 Clone your device, kernel, and vendor trees
       - name: Clone device, kernel, and vendor trees
         run: |
           cd shrp
@@ -43,6 +56,7 @@ jobs:
           # Kernel tree (stone)
           git clone https://github.com/hpsstuff/kernel_xiaomi_stone.git kernel/xiaomi/stone
 
+      # ⚙️ Build SHRP boot image
       - name: Build SHRP boot image
         run: |
           cd shrp
@@ -51,8 +65,9 @@ jobs:
           lunch twrp_sunstone-eng
           mka bootimage -j$(nproc --all)
 
+      # 📤 Upload boot.img artifact
       - name: Upload SHRP boot image
         uses: actions/upload-artifact@v4
         with:
-          name: SHRP-boot-sunstone
+          name: SHRP-boot-sunstone-${{ github.run_id }}
           path: shrp/out/target/product/sunstone/boot.img
